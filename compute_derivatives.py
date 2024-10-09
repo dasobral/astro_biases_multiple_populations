@@ -21,7 +21,7 @@ start_cpu_time = time.process_time()
 
 # ------------------------- OPEN CONFIG -------------------------------------
 
-config_file_path = 'config_derivatives.pkl'
+config_file_path = 'Data/config_derivatives.pkl'
 
 try:
     with open(config_file_path, 'rb') as config_file:
@@ -94,11 +94,11 @@ deriv_dict = {
 elapsed_time = end_time - start_time
 elapsed_cpu_time = end_cpu_time - start_cpu_time
 
-print('\n Saving the Dictionary to a file: derivatives.pkl \n')
+print('\n Saving the Dictionary to a file: Results/derivatives.pkl \n')
 for key in deriv_dict.keys():
         print(key)
 
-with open('derivatives.pkl', 'wb') as pk_file:
+with open('Results/derivatives.pkl', 'wb') as pk_file:
     pk.dump(deriv_dict, pk_file)
     
 print(f'\n Total elapsed real time: {elapsed_time:.2f} seconds')

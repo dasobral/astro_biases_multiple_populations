@@ -91,7 +91,7 @@ class FluxSolver(object):
         
     def fit_params(self,):
         
-        fitting_params = pd.read_csv('fitting_params.csv')
+        fitting_params = pd.read_csv('Data/fitting_params.csv')
 
         Sc = fitting_params.iloc[:,0].values * self.N_cut/10. 
 
