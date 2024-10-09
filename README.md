@@ -1,2 +1,3 @@
-# astro_biases_multiple_populations
-A Python toolkit to model, compute and constrain astrophysical properties of galaxy populations 
+# magevolbias
+
+Constraining magnification and evolution biases using the multipoles of the galaxy 2-point correlation function.
