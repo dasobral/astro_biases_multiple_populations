@@ -389,7 +389,7 @@ class Signal(object):
         
     
 
-class Derivatives(object): #(Solver, Signal, CosmoFuncs):
+class Derivatives(object):
 
     def __init__(self, params_dict0, z0=[0.0], n_split=2., b1 = 0.554, b2 = 0.783, delta=1.0, wide_angle = True, dist_correction=False):
         
@@ -418,7 +418,7 @@ class Derivatives(object): #(Solver, Signal, CosmoFuncs):
         self.dist_correction = dist_correction
 
         self.H0 = self.solverfid.H0 / 299792.485  / self.solverfid.h
-
+        
     def five_pt_stencil(self, params, d, z, z0 = [0.0], multipole=['monopole'], which_comb = [['b', 'b']], e=0.005, output_flat=False):
 
         # params is a list with the name of the parameter to vary
