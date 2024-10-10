@@ -22,7 +22,7 @@ The only non-standard package is ```camb```. This is just the Python version of 
 If you need to install the specific packages in your machine or preferred environment, run the following command:
 
 ``` 
-    pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 # Code Description
@@ -81,7 +81,7 @@ these integrals. The output of the Notebooks are stored in the folders '/Covaria
     CovarianceCalculator_BxF.nb
         Notebooks for computing the Covariance Matrices for different 
         population splits, denoted by the % of B and F galaxies. We
-        include 6 examples. The output the results to 
+        include some examples.
 
     CovarianceCalculator_Joint_Bxb.nb
         Notebooks for computing the Covariance Matrices for the 
