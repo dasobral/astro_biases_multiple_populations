@@ -1,6 +1,6 @@
 # Astrophysical Biases of Galaxy Populations
 
-This is a Python (+ some Mathematica) code used to constrain magnification and evolution biases using the multipoles of the galaxy 2-point correlation function in the flat-sky approximation. We make use of the three even multipoles and two odd multipoles containing all the information available. This code includes for the first time the modeling both of the dipole and the octupole as predicted by General Relativity, and exploits them simultaneously to put constraints on the magnification and the evolution biases, using solely information from the large-scale distribution of galaxies. 
+This is a Python (+ some Mathematica) code used to constrain magnification and evolution biases using the multipoles of the galaxy 2-point correlation function in the flat-sky approximation. We make use of the three even multipoles and two odd multipoles containing all the information available. This code includes for the first time the modeling both of the dipole and the octupole as predicted by General Relativity and a new modeling for splitting the galaxy population in two luminosity classes, bright (B) and faint (F). We then show that we can constrain the magnification and the evolution biases solely using information from the large-scale distribution of galaxies. 
 
 This code was designed by [D. Sobral-Blanco](https://github.com/dasobral) to provide the numerical support to the paper [Using relativistic effects in large-scale structure to constrain astrophysical properties of galaxy populations](https://arxiv.org/abs/2406.19908). Any comment or inquiry should be adressed to [D. Sobral-Blanco](https://github.com/dasobral).
 
@@ -8,7 +8,8 @@ This code was designed by [D. Sobral-Blanco](https://github.com/dasobral) to pro
 
 The code is organized as follows:
 
-- The Python sector:
+- The Python sector. This is the core of the code, computes everything except for the covariance matrices. Results can be stored y the '/Results' folder. 
+As examples of code usage, we also provide some of the Python notebooks generated for the paper in the folder '/Notebooks':
 
     ```
     biasmodels.py 
@@ -46,6 +47,24 @@ The code is organized as follows:
         The derivatives with respect to the cosmic parameters are
         computed numerically. 
         The rest of the derivatives can be computed analytically.
+    ```
+- The Mathematica sector. It is self-contained in the folder '/Covariance'. The inner folder '/Covariance/integrals' contains .dat files with the 2D FFT transforms
+needed to compute the real-space covariances. Note that these have to be obtained from elsewhere, using a suitable method. We do not include the module used to compute
+these integrals. The output of the Notebooks are stored in the folders '/Covariance/multi_split' (even multipoles + dipole) and '/Covariance/octupole' (even multipoles + dipole + octupole).
+
+    ```
+    sigma8_CAMB.dat
+        File containing the values for $\sigma8$ as computed by CAMB.
+
+    CovarianceCalculator_BxF.nb
+        Notebooks for computing the Covariance Matrices for different 
+        population splits, denoted by the % of B and F galaxies. We
+        include 6 examples. The output the results to 
+
+    CovarianceCalculator_Joint_Bxb.nb
+        Notebooks for computing the Covariance Matrices for the 
+        joint analysis of two splits, denoted by the % of Bright galaxies
+        of each split (B and b, respectively).
     ```
 
 # Citation
