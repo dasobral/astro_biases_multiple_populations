@@ -4,6 +4,27 @@ This is a Python (+ some Mathematica) code used to constrain magnification and e
 
 This code was designed by [D. Sobral-Blanco](https://github.com/dasobral) to provide the numerical support to the paper [Using relativistic effects in large-scale structure to constrain astrophysical properties of galaxy populations](https://arxiv.org/abs/2406.19908). Any comment or inquiry should be adressed to [D. Sobral-Blanco](https://github.com/dasobral).
 
+# Requirements
+
+The necessary depencencies can be easily installed via the ```requirements.txt``` file. For clarity, we will need:
+
+```python
+camb==1.5.8
+numpy==1.23.1
+pandas==1.4.3
+scipy==1.8.1
+matplotlib
+getdist
+```
+
+The only non-standard package is ```camb```. This is just the Python version of [CAMB](https://github.com/cmbant/CAMB) (Code for Anisotropies in the Microwave Background). For more specific information about this module, you can visit the official [documentation](https://camb.readthedocs.io/en/latest/).
+
+If you need to install the specific packages in your machine or preferred environment, run the following command:
+
+``` 
+    pip install -r requirements.txt
+```
+
 # Code Description
 
 The code is organized as follows:
@@ -70,7 +91,7 @@ these integrals. The output of the Notebooks are stored in the folders '/Covaria
 
 # Citation
 
-If using this software, please cite this repository and the paper "Using relativistic effects in large-scale structure to constrain astrophysical properties of galaxy populations" [ 	arXiv:2406.19908](https://arxiv.org/abs/2406.19908). Bibtex:
+If using this software, please cite this repository and our paper: ["Using relativistic effects in large-scale structure to constrain astrophysical properties of galaxy populations"](https://arxiv.org/abs/2406.19908). Bibtex:
 
 ```
 @article{Sobral-Blanco:2024qlb,
