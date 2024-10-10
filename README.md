@@ -48,6 +48,7 @@ As examples of code usage, we also provide some of the Python notebooks generate
         computed numerically. 
         The rest of the derivatives can be computed analytically.
     ```
+
 - The Mathematica sector. It is self-contained in the folder '/Covariance'. The inner folder '/Covariance/integrals' contains .dat files with the 2D FFT transforms
 needed to compute the real-space covariances. Note that these have to be obtained from elsewhere, using a suitable method. We do not include the module used to compute
 these integrals. The output of the Notebooks are stored in the folders '/Covariance/multi_split' (even multipoles + dipole) and '/Covariance/octupole' (even multipoles + dipole + octupole).
