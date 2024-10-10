@@ -8,7 +8,7 @@ This code was designed by [D. Sobral-Blanco](https://github.com/dasobral) to pro
 
 The code is organized as follows:
 
-    - The Python sector:
+- The Python sector:
 
     ```
     biasmodels.py 
