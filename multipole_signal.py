@@ -19,18 +19,39 @@ from CAMBsolver import Solver
 from cosmofuncs import CosmoFuncs
 
 class Signal(object):
+    """
+    Class representing the signal calculation for multiple populations.
+    
+    Parameters:
+    - solver: Solver object
+        The solver object used to calculate cosmological quantities.
+    - zin: float, optional
+        The redshift at which the signal is calculated. Default is 10.
+    - n_split: float, optional
+        The number of population splits. Default is 2.
+    - b1: float, optional
+        The bias parameter for the first population. Default is 0.554.
+    - b2: float, optional
+        The bias parameter for the second population. Default is 0.783.
+    - delta: float, optional
+        The delta parameter. Default is 1.0.
+    - which_multipoles: list of str, optional
+        The list of multipoles to calculate. Default is ['monopole', 'dipole', 'quadrupole', 'hexadecapole'].
+    - pop: list of str, optional
+        The list of populations to consider. Default is ['b', 'f'].
+    - wide_angle: bool, optional
+        Flag indicating whether to consider wide-angle effects. Default is True.
+    - evol_bias: bool, optional
+        Flag indicating whether to consider evolution bias. Default is True.
+    - tol: float, optional
+        The tolerance for numerical calculations. Default is 1e-15.
+    - return_lists: bool, optional
+        Flag indicating whether to return the results as lists or numpy arrays. Default is True.
+    """
         
-    def __init__(self, solver, zin=10., n_split = 2., 
-                 b1 = 0.554, b2 = 0.783, delta=1.0, 
-                 which_multipoles=['monopole', 'dipole', 'quadrupole', 'hexadecapole'], 
-                 pop = ['b', 'f'], 
-                 wide_angle = True,
-                 evol_bias = True, 
-                 tol=1e-15, 
-                 return_lists = True): #For efficiency
-
+    def __init__(self, solver, zin=10., n_split=2., b1=0.554, b2=0.783, delta=1.0, which_multipoles=['monopole', 'dipole', 'quadrupole', 'hexadecapole'], pop=['b', 'f'], wide_angle=True, evol_bias=True, tol=1e-15, return_lists=True):
         self.solver = solver
-        self.multi_list = solver.interpolate_multi();
+        self.multi_list = solver.interpolate_multi()
         self.tol = tol
         self.return_lists = return_lists
         
@@ -43,15 +64,15 @@ class Signal(object):
         
         self.which_multipoles = which_multipoles
         self.pop = pop
-        self.H0 = solver.H0 / 299792.485  / self.solver.h    
+        self.H0 = solver.H0 / 299792.485 / self.solver.h    
         
-        self.mu0=self.multi_list['mu0'];
-        self.mu2=self.multi_list['mu2'];
-        self.mu4=self.multi_list['mu4'];
-        self.nu1=self.multi_list['nu1'];
-        self.nu3=self.multi_list['nu3'];
+        self.mu0 = self.multi_list['mu0']
+        self.mu2 = self.multi_list['mu2']
+        self.mu4 = self.multi_list['mu4']
+        self.nu1 = self.multi_list['nu1']
+        self.nu3 = self.multi_list['nu3']
 
-        self.GalaxyBias = GalaxyBiasMultiSplit(b1=self.b1, b2=self.b2, n_split=self.n_split, delta=self.deltab,  to_list=self.return_lists)
+        self.GalaxyBias = GalaxyBiasMultiSplit(b1=self.b1, b2=self.b2, n_split=self.n_split, delta=self.deltab, to_list=self.return_lists)
         self.MagBias = MagnificationBias(n_split=self.n_split)
         self.EvolBias = EvolutionBias(n_split=self.n_split, CAMBsolver=self.solver)
         self.CosmoF = CosmoFuncs(self.solver)
@@ -60,8 +81,7 @@ class Signal(object):
         self.s80 = self.s8(0.0)
         self.D10 = self.CosmoF.D1(0.)
 
-        
-        if wide_angle == True: 
+        if wide_angle:
             self._multipoles = {'monopole': self._monopole,
                                 'dipole': self._dipole, 
                                 'quadrupole': self._quadrupole,
@@ -74,258 +94,299 @@ class Signal(object):
                                 'hexadecapole': self._hexadecapole, 
                                 'octupole': self._octupole_nowide} 
         
-    # calculate_signal(...) appends all multipoles (with all possible combinations of populations) into one list
-
-    def calculate_signal(self, d, z): # Note that we cannot pass a list in both d and z because in the definition of the multipoles we multiply mu(d) or nu(d) x the redshift-dependent part.
+    def calculate_signal(self, d, z):
+        """
+        Calculate the signal for the given separations and redshifts.
         
+        Parameters:
+        - d: float or array-like
+            The separation(s) at which to calculate the signal.
+        - z: float or array-like
+            The redshift(s) at which to calculate the signal.
+        
+        Returns:
+        - signal: array-like
+            The calculated signal(s) for the given separations and redshifts.
+        """
         for i, m in enumerate(self.which_multipoles): 
-            if i==0: 
-                signal = self._multipoles[m](d,z) # _multipoles[m](d,z) is a list, containing the m-th multipole for all pairs of populations at separation d and redshift z 
+            if i == 0: 
+                signal = self._multipoles[m](d, z)
             else:
-                signal += self._multipoles[m](d,z) # appends the next multipole to the list
+                signal += self._multipoles[m](d, z)
         
-        return signal # Returns a list of 8 numpy arrays corresponding to the multipoles computed for the given separations. 
+        return signal
     
-    def _monopole(self, d, z, which_comb='default'): #Needs to be multiplied by mu_0
-                                                     #default value of which_comb is [['b','b'],['b','f'],['f','f']]; You can specify it otherwise if you e.g. just want [['b','f']]
-        if which_comb=='default':
-
-            which_comb=list(it.combinations_with_replacement(self.pop,2)) #NG: I'm doing it this way because directly defining something with "self" as a default value does not work
+    def _monopole(self, d, z, which_comb='default'):
+        """
+        Calculate the monopole signal for the given separation and redshift.
         
-        mu0=self.mu0(d)
-
-        #Evolz = (self.CosmoF.D1(z)/self.D10)**2
-        f = self.CosmoF.f(z) * self.s8(z) #f_hat
+        Parameters:
+        - d: float or array-like
+            The separation(s) at which to calculate the signal.
+        - z: float or array-like
+            The redshift(s) at which to calculate the signal.
+        - which_comb: list of list of str, optional
+            The combinations of populations to consider. Default is 'default'.
         
-        monopole=[]
+        Returns:
+        - monopole: array-like
+            The calculated monopole signal(s) for the given separation and redshift.
+        """
+        if which_comb == 'default':
+            which_comb = list(it.combinations_with_replacement(self.pop, 2))
+        
+        mu0 = self.mu0(d)
+        f = self.CosmoF.f(z) * self.s8(z)
+        
+        monopole = []
         for i, comb in enumerate(which_comb):
-            bpop1 = self.galaxybias(comb[0], z)  #bias of which_comb[i][0], multiplied by transfer function
-            bpop2 = self.galaxybias(comb[1], z)  #bias of which_comb[i][1], multiplied by transfer function
+            bpop1 = self.galaxybias(comb[0], z)
+            bpop2 = self.galaxybias(comb[1], z)
+            zfactor = (bpop1 * bpop2 + 1/3 * (bpop1 + bpop2) * f + 1/5 * f**2) / self.s80**2
+            monopole += [mu0 * np.transpose(np.array([zfactor,] * len(mu0)))]
         
-            #monopole += [mu0 * (bpop1*bpop2+1/3*(bpop1+bpop2)*f+1/5*f**2)/self.s80**2]
-            zfactor=(bpop1*bpop2+1/3*(bpop1+bpop2)*f+1/5*f**2)/self.s80**2
-            monopole += [mu0 * np.transpose(np.array([zfactor,]*len(mu0)))]
-
-        if self.return_lists == False:
+        if not self.return_lists:
             monopole = np.array(monopole)
-
+        
         return monopole
     
     def _dipole(self, d, z, which_comb='default'):
+        """
+        Calculate the dipole signal for the given separation and redshift.
         
-        dipole_nowide=self._dipole_nowide(d, z, which_comb=which_comb)
-        dipole_onlywide=self._dipole_onlywide(d, z, which_comb=which_comb)
-
+        Parameters:
+        - d: float or array-like
+            The separation(s) at which to calculate the signal.
+        - z: float or array-like
+            The redshift(s) at which to calculate the signal.
+        - which_comb: list of list of str, optional
+            The combinations of populations to consider. Default is 'default'.
+        
+        Returns:
+        - dipole: array-like
+            The calculated dipole signal(s) for the given separation and redshift.
+        """
+        dipole_nowide = self._dipole_nowide(d, z, which_comb=which_comb)
+        dipole_onlywide = self._dipole_onlywide(d, z, which_comb=which_comb)
         dipole_total = [x + y for x, y in zip(dipole_nowide, dipole_onlywide)]
-
-        if self.return_lists == False:
+        
+        if not self.return_lists:
             dipole_total = np.array(dipole_total)
-
-        return  dipole_total
+        
+        return dipole_total
     
-    def _dipole_nowide(self, d, z, which_comb='default', Euler = True): 
+    def _dipole_nowide(self, d, z, which_comb='default', Euler=True):
+        """
+        Calculate the non-wide-angle dipole signal for the given separation and redshift.
         
-        if which_comb=='default':
-            which_comb=list(it.combinations(self.pop,2)) #Only allowing combinations of *distinct* populations for the dipole
-       
-        rH0=self.CosmoF.rH0(z) #comoving distance to z, multiplied by H_0
-        Hz=self.CosmoF.HH(z)
+        Parameters:
+        - d: float or array-like
+            The separation(s) at which to calculate the signal.
+        - z: float or array-like
+            The redshift(s) at which to calculate the signal.
+        - which_comb: list of list of str, optional
+            The combinations of populations to consider. Default is 'default'.
+        - Euler: bool, optional
+            Flag indicating whether the Euler equation is used or not. Default is True.
         
-        f = self.CosmoF.f(z) * self.s8(z) #f_eff multiplied by transfer function
-        fdot = - (1+np.array(z)) * self.H0*Hz * (self.s80/self.D10) * (self.CosmoF.D1(z)*self.CosmoF.f_dz(z) + self.CosmoF.D1_dz(z)*self.CosmoF.f(z))
+        Returns:
+        - dipole_nowide: array-like
+            The calculated non-wide-angle dipole signal(s) for the given separation and redshift.
+        """
+        if which_comb == 'default':
+            which_comb = list(it.combinations(self.pop, 2))
+        
+        rH0 = self.CosmoF.rH0(z)
+        Hz = self.CosmoF.HH(z)
+        f = self.CosmoF.f(z) * self.s8(z)
+        fdot = - (1 + np.array(z)) * self.H0 * Hz * (self.s80 / self.D10) * (self.CosmoF.D1(z) * self.CosmoF.f_dz(z) + self.CosmoF.D1_dz(z) * self.CosmoF.f(z))
         Ih = self.CosmoF.Omega_m(z) * self.s8(z)
         dHz = self.CosmoF.HH_dz(z)
+        nu1 = d * self.H0 * self.nu1(d)
         
-        nu1= d*self.H0 * self.nu1(d) #Factor d*H0 necessary because the file does not contain it
-
-        dipole_nowide=[]
-
+        dipole_nowide = []
         for i, comb in enumerate(which_comb):
-            bpop1= self.galaxybias(comb[0], z) #galaxy bias of which_comb[i][0]
-            bpop2= self.galaxybias(comb[1], z) #galaxy bias of which_comb[i][1]
-            
-            spop1= self.magbias(comb[0], z) #magnification bias of which_comb[i][0] 
-            spop2= self.magbias(comb[1], z) #magnification bias of which_comb[i][1]
-
-            fpop1 = self.fevol(comb[0], z) #evolution bias of which_comb[i][0]
+            bpop1 = self.galaxybias(comb[0], z)
+            bpop2 = self.galaxybias(comb[1], z)
+            spop1 = self.magbias(comb[0], z)
+            spop2 = self.magbias(comb[1], z)
+            fpop1 = self.fevol(comb[0], z)
             fpop2 = self.fevol(comb[1], z)
-
-            betapop1 = 5*spop1 * (1/(rH0 * Hz)-1) + fpop1
-            betapop2 = 5*spop2 * (1/(rH0 * Hz)-1) + fpop2
-
-            if Euler == False: 
-                dipole_nowideA = (3/5) * (betapop1-betapop2) * f**2 
-                dipole_nowideB = - (bpop1*betapop2 - bpop2*betapop1) * f - (bpop1-bpop2) * (1 - 2/(rH0*Hz)) * f
-                dipole_nowideC = (3/2) * (bpop1-bpop2) * Ih
-                dipole_nowideD = - (bpop1-bpop2) * fdot/(self.H0*Hz)
-                zfactor = Hz * (dipole_nowideA + dipole_nowideB + dipole_nowideC + dipole_nowideD) / self.s80**2
-                dipole_nowide += [nu1 * np.transpose(np.array([zfactor,]*len(nu1)))]
-            else:
-                dipole_nowideA = (3/5) * (betapop1-betapop2) * f**2
-                dipole_nowideB = - (bpop1*betapop2 - bpop2*betapop1) * f
-                dipole_nowideC =  (bpop1-bpop2) * (2/(rH0*Hz) + dHz/Hz**2) * f
-                zfactor = Hz * (dipole_nowideA + dipole_nowideB + dipole_nowideC) / self.s80**2
-                dipole_nowide += [nu1 * np.transpose(np.array([zfactor,]*len(nu1)))]
-                
-        if self.return_lists == False:
-            dipole_nowide = np.array(dipole_nowide)
+            betapop1 = 5 * spop1 * (1 / (rH0 * Hz) - 1) + fpop1
+            betapop2 = 5 * spop2 * (1 / (rH0 * Hz) - 1) + fpop2
             
+            if Euler:
+                dipole_nowideA = (3/5) * (betapop1 - betapop2) * f**2
+                dipole_nowideB = - (bpop1 * betapop2 - bpop2 * betapop1) * f
+                dipole_nowideC = (bpop1 - bpop2) * (2 / (rH0 * Hz) + dHz / Hz**2) * f
+                zfactor = Hz * (dipole_nowideA + dipole_nowideB + dipole_nowideC) / self.s80**2
+                dipole_nowide += [nu1 * np.transpose(np.array([zfactor,] * len(nu1)))]
+            else:
+                dipole_nowideA = (3/5) * (betapop1 - betapop2) * f**2
+                dipole_nowideB = - (bpop1 * betapop2 - bpop2 * betapop1) * f - (bpop1 - bpop2) * (1 - 2 / (rH0 * Hz)) * f
+                dipole_nowideC = (3/2) * (bpop1 - bpop2) * Ih
+                dipole_nowideD = - (bpop1 - bpop2) * fdot / (self.H0 * Hz)
+                zfactor = Hz * (dipole_nowideA + dipole_nowideB + dipole_nowideC + dipole_nowideD) / self.s80**2
+                dipole_nowide += [nu1 * np.transpose(np.array([zfactor,] * len(nu1)))]
+        
+        if not self.return_lists:
+            dipole_nowide = np.array(dipole_nowide)
+        
         return dipole_nowide
     
-    def _dipole_onlywide(self, d, z, which_comb='default'): #Needs to be multiplied by d*mu_2
+    def _dipole_onlywide(self, d, z, which_comb='default'):
+        """
+        Calculate the wide-angle dipole signal for the given separation and redshift.
         
-        if which_comb=='default':
-            which_comb=list(it.combinations(self.pop,2)) #Only allowing combinations of *distinct* populations for the dipole
-            
-        f = self.CosmoF.f(z) * self.s8(z) #f_eff multiplied by transfer function
-        rH0=self.CosmoF.rH0(z)
-
-        mu2wide= d * self.mu2(d) 
+        Parameters:
+        - d: float or array-like
+            The separation(s) at which to calculate the signal.
+        - z: float or array-like
+            The redshift(s) at which to calculate the signal.
+        - which_comb: list of list of str, optional
+            The combinations of populations to consider. Default is 'default'.
         
-        dipole_onlywide=[] 
+        Returns:
+        - dipole_onlywide: array-like
+            The calculated wide-angle dipole signal(s) for the given separation and redshift.
+        """
+        if which_comb == 'default':
+            which_comb = list(it.combinations(self.pop, 2))
+        
+        f = self.CosmoF.f(z) * self.s8(z)
+        rH0 = self.CosmoF.rH0(z)
+        mu2wide = d * self.mu2(d)
+        
+        dipole_onlywide = []
         for i, comb in enumerate(which_comb):
-            bpop1= self.galaxybias(comb[0], z) #galaxy bias of which_comb[i][0]
-            bpop2= self.galaxybias(comb[1], z) #galaxy bias of which_comb[i][1] 
-
-            zfactor = - 2/5*(bpop1-bpop2) * f / (rH0/self.H0) / self.s80**2
-            
-            dipole_onlywide += [ mu2wide *  np.transpose(np.array([zfactor,]*len(mu2wide)))]
-
-        if self.return_lists == False:
+            bpop1 = self.galaxybias(comb[0], z)
+            bpop2 = self.galaxybias(comb[1], z)
+            zfactor = -2/5 * (bpop1 - bpop2) * f / (rH0 / self.H0) / self.s80**2
+            dipole_onlywide += [mu2wide * np.transpose(np.array([zfactor,] * len(mu2wide)))]
+        
+        if not self.return_lists:
             dipole_onlywide = np.array(dipole_onlywide)
-
+        
         return dipole_onlywide
     
-    def _quadrupole(self, d, z, which_comb='default'): 
-
-        if which_comb=='default':
-               which_comb=list(it.combinations_with_replacement(self.pop,2))
+    def _quadrupole(self, d, z, which_comb='default'):
+        """
+        Calculate the quadrupole signal for the given separation and redshift.
         
-        f=self.CosmoF.f(z) * self.s8(z) #f_eff
-
-        mu2=self.mu2(d)
-
-        quadrupole=[]
+        Parameters:
+        - d: float or array-like
+            The separation(s) at which to calculate the signal.
+        - z: float or array-like
+            The redshift(s) at which to calculate the signal.
+        - which_comb: list of list of str, optional
+            The combinations of populations to consider. Default is 'default'.
+        
+        Returns:
+        - quadrupole: array-like
+            The calculated quadrupole signal(s) for the given separation and redshift.
+        """
+        if which_comb == 'default':
+            which_comb = list(it.combinations_with_replacement(self.pop, 2))
+        
+        f = self.CosmoF.f(z) * self.s8(z)
+        mu2 = self.mu2(d)
+        
+        quadrupole = []
         for i, comb in enumerate(which_comb):
-            bpop1= self.galaxybias(comb[0], z) #bias of which_comb[i][0]
-            bpop2= self.galaxybias(comb[1], z) #bias of which_comb[i][1]
-
-            zfactor = -(2/3*(bpop1+bpop2)*f+4/7*f**2) / self.s80**2
-
-            quadrupole += [mu2 * np.transpose(np.array([zfactor,]*len(mu2)))] 
+            bpop1 = self.galaxybias(comb[0], z)
+            bpop2 = self.galaxybias(comb[1], z)
+            zfactor = -(2/3 * (bpop1 + bpop2) * f + 4/7 * f**2) / self.s80**2
+            quadrupole += [mu2 * np.transpose(np.array([zfactor,] * len(mu2)))]
         
-        if self.return_lists == False:
+        if not self.return_lists:
             quadrupole = np.array(quadrupole)
-
+        
         return quadrupole
     
     def _octupole(self, d, z, which_comb='default'):
+        """
+        Calculate the octupole signal for the given separation and redshift.
         
+        Parameters:
+        - d: float or array-like
+            The separation(s) at which to calculate the signal.
+        - z: float or array-like
+            The redshift(s) at which to calculate the signal.
+        - which_comb: list of list of str, optional
+            The combinations of populations to consider. Default is 'default'.
+        
+        Returns:
+        - octupole: array-like
+            The calculated octupole signal(s) for the given separation and redshift.
+        """
         oct_nowide = self._octupole_nowide(d, z, which_comb=which_comb)
         oct_onlywide = self._octupole_onlywide(d, z, which_comb=which_comb)
-
         oct_total = [x + y for x, y in zip(oct_nowide, oct_onlywide)]
-
-        if self.return_lists == False:
+        
+        if not self.return_lists:
             oct_total = np.array(oct_total)
-
-        return  oct_total
+        
+        return oct_total
     
     def _octupole_nowide(self, d, z, which_comb='default'):
+        """
+        Calculate the non-wide-angle octupole signal for the given separation and redshift.
         
-        if which_comb=='default':
-            which_comb=list(it.combinations(self.pop,2)) #Only allowing combinations of *distinct* populations for the dipole
-       
-        rH0=self.CosmoF.rH0(z) #comoving distance to z, multiplied by H_0
-        Hz=self.CosmoF.HH(z)
+        Parameters:
+        - d: float or array-like
+            The separation(s) at which to calculate the signal.
+        - z: float or array-like
+            The redshift(s) at which to calculate the signal.
+        - which_comb: list of list of str, optional
+            The combinations of populations to consider. Default is 'default'.
         
-        f = self.CosmoF.f(z) * self.s8(z) #f_eff multiplied by transfer function
+        Returns:
+        - oct_nowide: array-like
+            The calculated non-wide-angle octupole signal(s) for the given separation and redshift.
+        """
+        if which_comb == 'default':
+            which_comb = list(it.combinations(self.pop, 2))
         
-        nu3= d*self.H0 * self.nu3(d) #Factor d*H0 necessary because the file does not contain it
-
-        oct_nowide=[]
+        rH0 = self.CosmoF.rH0(z)
+        Hz = self.CosmoF.HH(z)
+        f = self.CosmoF.f(z) * self.s8(z)
+        nu3 = d * self.H0 * self.nu3(d)
+        
+        oct_nowide = []
         for i, comb in enumerate(which_comb):
-            
-            spop1= self.magbias(comb[0], z) #magnification bias of which_comb[i][0] 
-            spop2= self.magbias(comb[1], z) #magnification bias of which_comb[i][1]
-
-            fpop1 = self.fevol(comb[0], z) #evolution bias of which_comb[i][0]
+            spop1 = self.magbias(comb[0], z)
+            spop2 = self.magbias(comb[1], z)
+            fpop1 = self.fevol(comb[0], z)
             fpop2 = self.fevol(comb[1], z)
-
-            betapop1 = 5*spop1 * (1/(rH0 * Hz)-1) + fpop1
-            betapop2 = 5*spop2 * (1/(rH0 * Hz)-1) + fpop2
-            
-            zfactor = 2/5 * Hz * (betapop1-betapop2) * f**2 / self.s80**2
+            betapop1 = 5 * spop1 * (1 / (rH0 * Hz) - 1) + fpop1
+            betapop2 = 5 * spop2 * (1 / (rH0 * Hz) - 1) + fpop2
+            zfactor = 2/5 * Hz * (betapop1 - betapop2) * f**2 / self.s80**2
+            oct_nowide += [nu3 * np.transpose(np.array([zfactor,] * len(nu3)))]
         
-            oct_nowide += [ nu3 *  np.transpose(np.array([zfactor,]*len(nu3)))]
-            
-            if self.return_lists == False:
-                oct_nowide = np.array(oct_nowide)
+        if not self.return_lists:
+            oct_nowide = np.array(oct_nowide)
         
         return oct_nowide
     
-    def _octupole_onlywide(self, d, z, which_comb='default'): #Needs to be multiplied by d*mu_2
+    def _octupole_onlywide(self, d, z, which_comb='default'):
+        """
+        Calculate the wide-angle octupole signal for the given separation and redshift.
         
-        if which_comb=='default':
-            which_comb=list(it.combinations(self.pop,2)) #Only allowing combinations of *distinct* populations for the dipole
-            
-        f = self.CosmoF.f(z) * self.s8(z) #f_eff multiplied by transfer function
-        rH0=self.CosmoF.rH0(z)
-
-        mu2wide= d * self.mu2(d) 
+        Parameters:
+        - d: float or array-like
+            The separation(s) at which to calculate the signal.
+        - z: float or array-like
+            The redshift(s) at which to calculate the signal.
+        - which_comb: list of list of str, optional
+            The combinations of populations to consider. Default is 'default'.
         
-        oct_onlywide=[] 
-        for i, comb in enumerate(which_comb):
-            bpop1= self.galaxybias(comb[0], z) #galaxy bias of which_comb[i][0]
-            bpop2= self.galaxybias(comb[1], z) #galaxy bias of which_comb[i][1] 
-
-            zfactor =  2/5 * (bpop1-bpop2) * f / (rH0/self.H0) / self.s80**2
-            
-            oct_onlywide += [ mu2wide *  np.transpose(np.array([zfactor,]*len(mu2wide)))]
-
-        if self.return_lists == False:
-            oct_onlywide = np.array(oct_onlywide)
-
-        return oct_onlywide
-    
-    def _hexadecapole(self, d, z): #Needs to be multiplied by mu_4
+        Returns:
+        - oct_onlywide: array-like
+            The calculated wide-angle octupole signal(s) for the given separation and redshift.
+        """
+        if which_comb == 'default':
+            which_comb = list(it.combinations(self.pop, 2))
         
-        f = self.CosmoF.f(z) * self.s8(z) #f_eff
-        
-        mu4=self.mu4(d)
-
-        zfactor = (8/35)*f**2 /  self.s80**2
-        
-        hexadecapole = [mu4 * np.transpose(np.array([zfactor,]*len(mu4)))]
-
-        if self.return_lists == False:
-            hexadecapole = np.array(hexadecapole)
-
-        return hexadecapole
-    
-    def galaxybias(self, pop, x): 
-        if pop=='b':
-                  return self.s8(x) * self.GalaxyBias.gbias_bright(x)
-        else:
-                  return  self.s8(x) * self.GalaxyBias.gbias_faint(x)
-    
-    def magbias(self, pop, x): # Calculated with Roy et a.l. fitting model
-        if pop=='b': 
-            return self.MagBias.s_bright(x) 
-        else:  
-            return self.MagBias.s_faint(x)
- 
-    def fevol(self, pop, x):
-        if pop=='b':
-            if self.evol_bias_bool == True:
-                return self.EvolBias.fevol_bright(x)
-            else:
-                return 0*self.EvolBias.fevol_bright(x)
-        else:
-            if self.evol_bias_bool == True:
-                return self.EvolBias.fevol_faint(x)
-            else:
-                return 0*self.EvolBias.fevol_faint(x)
     
 
 class Derivatives(object): #(Solver, Signal, CosmoFuncs):
