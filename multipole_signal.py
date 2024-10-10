@@ -9,10 +9,8 @@ Created on Oct 2022
 
 # Import
 
-from signal import signal
 import numpy as np
 import itertools as it
-import scipy.special as sc
 
 from biasmodels import MagnificationBias, EvolutionBias, GalaxyBiasMultiSplit
 from CAMBsolver import Solver
@@ -386,12 +384,153 @@ class Signal(object):
         """
         if which_comb == 'default':
             which_comb = list(it.combinations(self.pop, 2))
+            
+    def galaxybias(self, pop, x): 
+        """
+        Compute the galaxy bias for a given population.
+
+        This method evaluates the galaxy bias based on the specified population type
+        (bright or faint) at the provided data point.
+
+        Parameters:
+        - pop: str
+            The type of galaxy population for which to compute the bias. 
+            Use 'b' for bright galaxies and any other value for faint galaxies.
+        - x: float or array-like
+            The input data point(s) at which to evaluate the galaxy bias.
+
+        Returns:
+        - float or array-like
+            The computed galaxy bias for the specified population type at the given input.
+        """
+
+        if pop=='b':
+                  return  self.GalaxyBias.gbias_bright(x)
+        else:
+                  return  self.GalaxyBias.gbias_faint(x)  
+    
+    
+    def magbias(self, pop, x): 
+        """
+        Compute the magnification bias for a given population.
+
+        This method evaluates the magnification bias based on the specified population type
+        (bright or faint) at the provided redshift values.
+
+        Parameters:
+        - pop: str
+            The type of galaxy population for which to compute the magnification bias. 
+            Use 'b' for bright galaxies and any other value for faint galaxies.
+        - x: float or array-like
+            The input redshift value(s) at which to evaluate the magnification bias.
+
+        Returns:
+        - float or array-like
+            The computed magnification bias for the specified population type at the given input redshift(s).
+        """
+
+        z = np.array(x)
+        if pop=='b': 
+            return self.MagBias.s_bright(z) 
+        else:  
+            return self.MagBias.s_faint(z)
+        
+    
+    def fevol(self, pop, x):
+        """
+        Compute the evolution bias for a given population.
+
+        This method calculates the evolution bias for either bright or faint galaxy populations
+        at the provided redshift values.
+
+        Parameters:
+        - pop: str
+            The type of galaxy population for which to compute the evolution bias.
+            Use 'b' for bright galaxies and any other value for faint galaxies.
+        - x: float or array-like
+            The input redshift value(s) at which to evaluate the evolution bias.
+
+        Returns:
+        - float or array-like
+            The computed evolution bias for the specified population type at the given input redshift(s).
+        """
+
+        if pop=='b':
+            return self.EvolBias.fevol_bright(x)
+        else:
+            return self.EvolBias.fevol_faint(x)
+
         
 
 class Derivatives(object):
+    """
+    A class to calculate derivatives related to cosmological parameters, galaxy bias, and magnification bias.
 
-    def __init__(self, params_dict0, z0=[0.0], n_split=2., b1 = 0.554, b2 = 0.783, delta=1.0, wide_angle = True, dist_correction=False):
+    Attributes:
+    - params_dict0: dict
+        A dictionary containing the names (as strings) of the parameters.
+    - n_split: float
+        The number of population splits.
+    - b1: float
+        The bias parameter for the first population.
+    - b2: float
+        The bias parameter for the second population.
+    - delta: float
+        The delta parameter.
+    - wide_angle: bool
+        Flag indicating whether to consider wide-angle effects.
+    - dist_correction: bool
+        Flag indicating whether to apply distance correction.
+    - solverfid: Solver
+        Solver instance initialized with z0 and params_dict0.
+    - CosmoFfid: CosmoFuncs
+        CosmoFuncs instance initialized with solverfid.
+    - GalaxyBias: GalaxyBiasMultiSplit
+        GalaxyBiasMultiSplit instance initialized with b1, b2, n_split, and delta.
+    - MagBias: MagnificationBias
+        MagnificationBias instance initialized with n_split.
+    - EvolBias: EvolutionBias
+        EvolutionBias instance initialized with n_split and CAMBsolver.
+    - multi_listfid: dict
+        Dictionary containing interpolated values from the solverfid.
+    - mu0fid: float
+        Interpolated mu0 value from multi_listfid.
+    - mu2fid: float
+        Interpolated mu2 value from multi_listfid.
+    - mu4fid: float
+        Interpolated mu4 value from multi_listfid.
+    - nu1fid: float
+        Interpolated nu1 value from multi_listfid.
+    - nu3fid: float
+        Interpolated nu3 value from multi_listfid.
+    - H0: float
+        Hubble constant in units of km/s/Mpc.
+    """
+
+    def __init__(self, params_dict0, z0=[0.0], n_split=2., b1=0.554, b2=0.783, delta=1.0, wide_angle=True, dist_correction=False):
+       
+        """
+        Initialize the Derivatives class with specified parameters.
         
+        Parameters:
+        - params_dict0: dict
+            A dictionary containing the names (as strings) of the parameters.
+        - z0: list of float, optional
+            The initial redshift(s). Default is [0.0].
+        - n_split: float, optional
+            The number of population splits. Default is 2.
+        - b1: float, optional
+            The bias parameter for the first population. Default is 0.554.
+        - b2: float, optional
+            The bias parameter for the second population. Default is 0.783.
+        - delta: float, optional
+            The delta parameter. Default is 1.0.
+        - wide_angle: bool, optional
+            Flag indicating whether to consider wide-angle effects. Default is True.
+        - dist_correction: bool, optional
+            Flag indicating whether to apply distance correction. Default is False.
+        """
+
         self.params_dict0 = params_dict0 # This is a dict that contains names(str) of the parameters
         
         self.n_split = n_split
@@ -418,9 +557,38 @@ class Derivatives(object):
 
         self.H0 = self.solverfid.H0 / 299792.485  / self.solverfid.h
         
-    def five_pt_stencil(self, params, d, z, z0 = [0.0], multipole=['monopole'], which_comb = [['b', 'b']], e=0.005, output_flat=False):
+    def five_pt_stencil(self, params, d, z, z0=[0.0], multipole=['monopole'], which_comb=[['b', 'b']], e=0.005, output_flat=False):
+        
+        """
+        Compute the five-point stencil for the specified parameters to estimate derivatives. This is the method used
+        to compute the derivatives with respect to the cosmic parameters.
 
-        # params is a list with the name of the parameter to vary
+        This method varies the specified parameters using a five-point stencil approach to calculate the
+        derivative signals based on a given input dataset.
+
+        Parameters:
+        - params: list of str
+            A list of parameter names to vary.
+        - d: float or list of float
+            The data points or values related to the parameters being varied.
+        - z: float
+            The redshift value at which to evaluate the signals.
+        - z0: list of float, optional
+            The initial redshift(s). Default is [0.0].
+        - multipole: list of str, optional
+            The multipole(s) to consider for the signals. Default is ['monopole'].
+        - which_comb: list of list of str, optional
+            Combinations of bias parameters for the calculations. Default is [['b', 'b']].
+        - e: float, optional
+            The perturbation size for varying the parameters. Default is 0.005.
+        - output_flat: bool, optional
+            Flag indicating whether to return the output in a flat format. Default is False.
+
+        Returns:
+        - expr_out: numpy.ndarray
+            The computed derivative values based on the five-point stencil method,
+            either in flat format or structured depending on the output_flat parameter.
+        """
 
         epsilon = [-2*e, -e, e, 2*e]
 
@@ -483,8 +651,33 @@ class Derivatives(object):
 
         return expr_out
     
-    def dsignal_cosmic_params(self, z, d, multipoles=['monopole', 'dipole', 'quadrupole', 'hexadecapole', 'octupole'], steps = [1e-3, 1e-1, 1e-4, 1e-2, 1e-2]):
-            
+    def dsignal_cosmic_params(self, z, d, multipoles=['monopole', 'dipole', 'quadrupole', 'hexadecapole', 'octupole'], steps=[1e-3, 1e-1, 1e-4, 1e-2, 1e-2]):
+    
+        """
+        Calculate the derivatives of signal with respect to cosmic parameters using the five-point stencil method.
+
+        This method computes the derivatives of the signal based on variations in cosmic parameters for 
+        a given set of multipoles. The results are organized into a structured array reflecting the 
+        sensitivity of the signals to changes in parameters.
+
+        Parameters:
+        - z: float or list of float
+            The redshift values at which to evaluate the signals.
+        - d: float or list of float
+            The data points or values related to the parameters being varied.
+        - multipoles: list of str, optional
+            A list of multipole terms to consider for the derivatives. Default includes 
+            ['monopole', 'dipole', 'quadrupole', 'hexadecapole', 'octupole'].
+        - steps: list of float, optional
+            A list of perturbation sizes corresponding to each parameter. Default is 
+            [1e-3, 1e-1, 1e-4, 1e-2, 1e-2].
+
+        Returns:
+        - dsignal_dtheta: numpy.ndarray
+            An array containing the computed derivatives of the signals with respect to the cosmic parameters,
+            structured by parameter, redshift, and data point.
+        """
+     
         keys = self.params_dict0.keys()
                 
         derivatives = [[self.five_pt_stencil(params=[param], d=d, z=z, multipole=[multipole], which_comb='default', e=step, output_flat=True) for multipole in multipoles] for (param, step) in zip(keys, steps)]
@@ -500,7 +693,36 @@ class Derivatives(object):
         
         return dsignal_dtheta
 
-    def derivative_magbias(self, pop, param, d, z, zin = 10., absolute = False):
+    def derivative_magbias(self, pop, param, d, z, zin=10., absolute=False):
+        """
+        Calculate the derivatives of the signal with respect to magnification bias parameters.
+
+        This method computes the derivatives of the signal related to magnification bias parameters 
+        based on the specified population and parameter type. The results provide insights into 
+        how variations in the magnification bias parameters affect the signal.
+
+        Parameters:
+        - pop: str
+            The population type for which the derivatives are computed. Options include 'sB' 
+            or other categories.
+        - param: str
+            The specific magnification bias parameter to vary (e.g., 's1', 's2', 's3', 's0'). These 
+            correspond with the parameters of the fitting model.
+        - d: float or list of float
+            The data points or values related to the parameters being varied.
+        - z: float or list of float
+            The redshift values at which to evaluate the derivatives.
+        - zin: float, optional
+            The initial redshift value for the calculations. Default is 10.0.
+        - absolute: bool, optional
+            If True, the method returns absolute values; if False, it returns relative changes. 
+            Default is False.
+
+        Returns:
+        - numpy.ndarray
+            An array containing the computed derivatives of the signals with respect to the 
+            magnification bias parameters, organized by multipole and parameter.
+        """
 
         nz = len(z)
         nd = len(d)
@@ -560,94 +782,70 @@ class Derivatives(object):
 
         return np.concatenate([monoBB, monoBF, monoFF, dip, quadBB, quadBF, quadFF, hexa, oct], axis=1)
     
-    def dsignal_magbias_bins(self, d, z, pops = ['sB', 'sF'], absolute=True):
-
-        # Magnification bias derivatives
-        
-        n_zs = len(z)
-        n_b = len(z)
-        
-        dsignal_ds_ = np.array([self.derivative_magbias(pop=p, param='s0', d=d, z=z, absolute=absolute) for p in pops])
-        dsignal_ds= np.empty((len(pops), n_zs, n_b, len(dsignal_ds_[0,0])))
-
-        zeros=np.zeros((len(dsignal_ds_[0,0])))
-
-        for l,_ in enumerate(pops):
-            for i,_ in enumerate(z):
-                for j,_ in enumerate(z):
-                    if i == j:
-                        dsignal_ds[l,i,j] = dsignal_ds_[l,j]
-                    else:
-                        dsignal_ds[l,i,j] = zeros
-                    
-        return np.concatenate([dsignal_ds[0], dsignal_ds[1]])
     
-    def dsignal_magbias_fit(self, d, z,  pops = ['sB', 'sF'], names_s_params = ['s0', 's1', 's2', 's3'], absolute = True):
-        
+    def dsignal_magbias_fit(self, d, z, pops=['sB', 'sF'], names_s_params=['s0', 's1', 's2', 's3'], absolute=True):
+        """
+        Compute the magnification bias derivatives for fitting parameters across specified populations.
+
+        This method calculates the derivatives of the signal related to magnification bias 
+        for different fitting parameters across specified populations and redshift values. 
+        The results are structured to assist in the fitting process by providing insights into 
+        how variations in the magnification bias parameters influence the signal.
+
+        Parameters:
+        - d: float or list of float
+            The data points or values related to the parameters being varied.
+        - z: float or list of float
+            The redshift values at which to evaluate the derivatives.
+        - pops: list of str, optional
+            A list of population types for which the derivatives are computed. Default is 
+            ['sB', 'sF'].
+        - names_s_params: list of str, optional
+            A list of names for the magnification bias parameters to differentiate in the 
+            derivative calculations. Default is ['s0', 's1', 's2', 's3'].
+        - absolute: bool, optional
+            If True, the method returns absolute values; if False, it returns relative changes. 
+            Default is True.
+
+        Returns:
+        - numpy.ndarray
+            A concatenated array containing the computed magnification bias derivatives for 
+            the specified populations and parameters.
+        """
+
         dsignal_ds = np.array([[self.derivative_magbias(pop, param, d, z, absolute=absolute) for param in names_s_params] for pop in pops])
         
         return np.concatenate([dsignal_ds[0], dsignal_ds[1]])
     
-    def derivative_gbias(self, param, d, z, zin=10.):
-
-        nz = len(z)
-        nd = len(d)
-
-        rH0 = self.CosmoFfid.rH0(z) #comoving distance to z, multiplied by H_0
-        Hz = self.CosmoFfid.HH(z)
-        s8 = self.solverfid.Sigma8(zin)
-        sigma8 = s8(z)
-        f = self.CosmoFfid.f(z) * sigma8
-        dHz = -(1+np.array(z)) * Hz * self.CosmoFfid.HH_dz(z)
-
-        sigma80 = s8(0.0)
-
-        nu1 = d * self.H0 * self.nu1fid(d)
-        mu0 = self.mu0fid(d)
-        mu2 = self.mu2fid(d)
-        nu3 = d * self.H0 * self.nu3fid(d)
-        mu4 = self.mu4fid(d)
-
-        gamma = 5 * (1/(rH0 * Hz)-1)
-        betaB = self.magbias('b', z) * gamma + self.fevol('b', z)
-        betaF = self.magbias('f', z) * gamma + self.fevol('f', z)
-
-        #zeros = [0.] * nd
-
-        if param == 'bB':
-            monoBBfactor = (2 * self.galaxybias('b',z) * s8(z) + 2/3 * f) * s8(z)
-            monoBFfactor = (self.galaxybias('f', z) * s8(z) +  f/3) * s8(z)
-            monoFFfactor = [0.] * nz
-            dipfactor = Hz * (-betaF * f + (2/(rH0 * Hz) + dHz/Hz**2) * f) * s8(z)
-            quadBBfactor = - 4 * f / 3 * s8(z)
-            quadBFfactor = - 2 * f / 3 * s8(z)
-            quadFFfactor = [0.] * nz
-            hexafactor = [0.] * nz
-            octfactor =  [0.] * nz
-        else:
-            monoBBfactor = [0.] * nz
-            monoBFfactor = (self.galaxybias('b', z) * s8(z) +  f/3) * s8(z)
-            monoFFfactor = (2 * self.galaxybias('f', z) * s8(z) + 2/3 * f) * s8(z)
-            dipfactor = Hz * (betaB * f - (2/(rH0 * Hz) + dHz/Hz**2) * f) * s8(z)
-            quadBBfactor = [0.] * nz
-            quadBFfactor = - 2 * f / 3 * s8(z)
-            quadFFfactor = - 4 * f / 3 * s8(z)
-            hexafactor = [0.] * nz
-            octfactor = [0.] * nz            
-
-        monoBB = mu0/sigma80**2 * np.transpose(np.array([monoBBfactor,] * nd))
-        monoBF = mu0/sigma80**2 * np.transpose(np.array([monoBFfactor,] * nd))
-        monoFF = mu0/sigma80**2 * np.transpose(np.array([monoFFfactor,] * nd))
-        dip = nu1/sigma80**2 * np.transpose(np.array([dipfactor,] * nd))
-        quadBB = mu2/sigma80**2 * np.transpose(np.array([quadBBfactor,] * nd))
-        quadBF = mu2/sigma80**2 * np.transpose(np.array([quadBFfactor,] * nd))
-        quadFF = mu2/sigma80**2 * np.transpose(np.array([quadFFfactor,] * nd))
-        hexa = mu4/sigma80**2 * np.transpose(np.array([hexafactor,] * nd))
-        oct = nu3/sigma80**2 * np.transpose(np.array([octfactor,] * nd))
-
-        return np.concatenate([monoBB, monoBF, monoFF, dip, quadBB, quadBF, quadFF, hexa, oct], axis=1)
     
     def derivative_gbias_fit(self, pop, param, d, z, zin=10.):
+        """
+        Compute the derivatives of the galaxy bias signal for a specified population and parameter.
+
+        This method calculates the derivatives of the galaxy bias signal with respect to the
+        specified parameter for a given population. The results can be used to analyze how
+        variations in galaxy bias parameters influence the signal, aiding in cosmological
+        modeling and parameter fitting.
+
+        Parameters:
+        - pop: str
+            The population type for which the derivative is calculated. Can be 'B' for bright
+            galaxies or 'F' for faint galaxies.
+        - param: str
+            The parameter of the galaxy bias to differentiate, such as 'b1'.
+        - d: float or list of float
+            The data points or values related to the parameters being varied.
+        - z: float or list of float
+            The redshift values at which to evaluate the derivatives.
+        - zin: float, optional
+            The initial redshift value used for some calculations. Default is 10.
+
+        Returns:
+        - numpy.ndarray
+            A concatenated array containing the computed derivatives of the galaxy bias signal 
+            for the specified population and parameter.
+        """
+
 
         nz = len(z)
         nd = len(d)
@@ -712,35 +910,60 @@ class Derivatives(object):
 
         return np.concatenate([monoBB, monoBF, monoFF, dip, quadBB, quadBF, quadFF, hexa, oct], axis=1)
     
-    def dsignal_gbias_bins(self, d, z, pops = ['bB', 'bF']):
 
-        # Galaxy bias derivatives
+    def dsignal_gbias_fit(self, d, z, pops=['B', 'F'], params=['b1', 'b2']):
+        """
+        Compute the galaxy bias signal derivatives with respect to specified parameters for different populations.
 
-        n_zs = len(z)
-        n_b = len(z)
-        
-        dsignal_db_ = np.array([self.derivative_gbias(p, d, z) for p in pops])
-        dsignal_db = np.empty((len(pops), n_zs, n_b, len(dsignal_db_[0,0])))
+        This method calculates the derivatives of the galaxy bias signal based on the provided 
+        populations and parameters. It combines the results from the derivatives for different
+        populations and parameters into a single array, facilitating analysis of the impact of
+        galaxy bias parameters on the signal.
 
-        zeros=np.zeros((len(dsignal_db_[0,0])))
+        Parameters:
+        - d: float or list of float
+            The data points or values related to the parameters being varied.
+        - z: float or list of float
+            The redshift values at which to evaluate the derivatives.
+        - pops: list of str, optional
+            The populations for which to compute the derivatives. Default is ['B', 'F'].
+        - params: list of str, optional
+            The parameters of the galaxy bias to differentiate. Default is ['b1', 'b2'].
 
-        for l,_ in enumerate(pops):
-            for i,_ in enumerate(z):
-                for j,_ in enumerate(z):
-                    if i == j:
-                        dsignal_db[l,i,j] = dsignal_db_[l,j]
-                    else:
-                        dsignal_db[l,i,j] = zeros
-                    
-        return np.concatenate([dsignal_db[0], dsignal_db[1]])
-
-    def dsignal_gbias_fit(self, d, z, pops = ['B', 'F'], params = ['b1', 'b2']):
+        Returns:
+        - numpy.ndarray
+            A concatenated array containing the computed derivatives of the galaxy bias signal 
+            for the specified populations and parameters.
+        """
         
         dsignal_dgbias_fit = np.array([[self.derivative_gbias_fit(pop, param, d, z, zin=10.) for param in params] for pop in pops])
     
         return np.concatenate([dsignal_dgbias_fit[0], dsignal_dgbias_fit[1]])
 
+
     def derivative_number_fit(self, param, d, z, zin=10.):
+        """
+        Compute the derivatives of the number density signal with respect to specified parameters.
+
+        This method calculates the derivatives of the number density signal based on the 
+        specified parameter. It incorporates the effects of redshift and galaxy bias to
+        generate the necessary derivatives for further analysis.
+
+        Parameters:
+        - param: str
+            The parameter for which to compute the derivative. Options include 'n0', 'n1', 'n2', and 'n3'.
+        - d: float or list of float
+            The data points or values related to the parameters being varied.
+        - z: float or list of float
+            The redshift values at which to evaluate the derivatives.
+        - zin: float, optional
+            A reference redshift value, default is 10.
+
+        Returns:
+        - numpy.ndarray
+            A concatenated array containing the computed derivatives of the number density signal 
+            for the specified parameter across the given data points and redshift values.
+        """
 
         nz = len(z)
         nd = len(d)
@@ -773,33 +996,104 @@ class Derivatives(object):
 
         return np.concatenate([monoBB, monoBB, monoBB, dip, monoBB, monoBB, monoBB, monoBB, oct], axis=1)
     
-    def dsignal_number_logfit(self, d, z, params = ['n0', 'n1', 'n2', 'n3']):
+    
+    def dsignal_number_logfit(self, d, z, params=['n0', 'n1', 'n2', 'n3']):
+        """
+        Compute the derivatives of the number density signal for a set of specified parameters.
+
+        This method evaluates the derivatives of the number density signal for a given set
+        of parameters at specified data points and redshift values, using the `derivative_number_fit`
+        method for calculations.
+
+        Parameters:
+        - d: float or list of float
+            The data points or values related to the parameters being varied.
+        - z: float or list of float
+            The redshift values at which to evaluate the derivatives.
+        - params: list of str, optional
+            The list of parameters for which to compute the derivatives. Default is ['n0', 'n1', 'n2', 'n3'].
+
+        Returns:
+        - numpy.ndarray
+            An array containing the computed derivatives of the number density signal for 
+            the specified parameters across the given data points and redshift values.
+        """
         
         dsignal_dnumber_fit = np.array([self.derivative_number_fit(param, d, z, zin=10.) for param in params])
 
         return dsignal_dnumber_fit
 
+
     def galaxybias(self, pop, x): 
+        """
+        Compute the galaxy bias for a given population.
+
+        This method evaluates the galaxy bias based on the specified population type
+        (bright or faint) at the provided data point.
+
+        Parameters:
+        - pop: str
+            The type of galaxy population for which to compute the bias. 
+            Use 'b' for bright galaxies and any other value for faint galaxies.
+        - x: float or array-like
+            The input data point(s) at which to evaluate the galaxy bias.
+
+        Returns:
+        - float or array-like
+            The computed galaxy bias for the specified population type at the given input.
+        """
+
         if pop=='b':
                   return  self.GalaxyBias.gbias_bright(x)
         else:
                   return  self.GalaxyBias.gbias_faint(x)  
     
-    def magbias(self, pop, x, ): #sB =[ -0.90110745,  1.82300205, -1.01878441, -0.30342325 ], sF = [ 0.51358538, 0.32646531, 0.86265929, 0.29226309 ]) 
+    
+    def magbias(self, pop, x): 
+        """
+        Compute the magnification bias for a given population.
+
+        This method evaluates the magnification bias based on the specified population type
+        (bright or faint) at the provided redshift values.
+
+        Parameters:
+        - pop: str
+            The type of galaxy population for which to compute the magnification bias. 
+            Use 'b' for bright galaxies and any other value for faint galaxies.
+        - x: float or array-like
+            The input redshift value(s) at which to evaluate the magnification bias.
+
+        Returns:
+        - float or array-like
+            The computed magnification bias for the specified population type at the given input redshift(s).
+        """
+
         z = np.array(x)
         if pop=='b': 
             return self.MagBias.s_bright(z) 
         else:  
             return self.MagBias.s_faint(z)
         
-    def magbias_abs(self, pop, x, ): #sB = [ -0.90110745,  1.82300205, -1.01878441, -0.30342325 ], sF = [ -0.19376092,  1.07473357, -0.07806244, -0.00558004 ])
-        z = np.array(x)
-        if pop=='b': 
-            return self.MagBias.s_bright(z) 
-        else:  
-            return self.MagBias.s_model(z)
     
     def fevol(self, pop, x):
+        """
+        Compute the evolution bias for a given population.
+
+        This method calculates the evolution bias for either bright or faint galaxy populations
+        at the provided redshift values.
+
+        Parameters:
+        - pop: str
+            The type of galaxy population for which to compute the evolution bias.
+            Use 'b' for bright galaxies and any other value for faint galaxies.
+        - x: float or array-like
+            The input redshift value(s) at which to evaluate the evolution bias.
+
+        Returns:
+        - float or array-like
+            The computed evolution bias for the specified population type at the given input redshift(s).
+        """
+
         if pop=='b':
             return self.EvolBias.fevol_bright(x)
         else:
