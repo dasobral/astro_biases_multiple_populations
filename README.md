@@ -22,7 +22,7 @@ The only non-standard package is ```camb```. This is just the Python version of 
 If you need to install the specific packages in your machine or preferred environment, run the following command:
 
 ``` 
-    pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 # Code Description
