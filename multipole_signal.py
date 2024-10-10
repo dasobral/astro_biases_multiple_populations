@@ -387,7 +387,6 @@ class Signal(object):
         if which_comb == 'default':
             which_comb = list(it.combinations(self.pop, 2))
         
-    
 
 class Derivatives(object):
 
