@@ -12,27 +12,40 @@ The code is organized as follows:
 
     ```
     biasmodels.py 
-        Modeling of the astrophysical biases for Bright and Faint galaxy populations: galaxy bias, magnification bias and evolution bias
+        Modeling of the astrophysical biases for Bright and Faint galaxy 
+        populations: galaxy bias, magnification bias and evolution bias
 
     CAMBsolver.py 
-        Logic for computing the Power Spectrum and its Fast Fourier Transform for the different multipoles. We use the Python extension of [CAMB](https://github.com/cmbant/CAMB)
-        and this version of the [FFTLOG](https://github.com/JCGoran/fftlog-python) algorithm (also included in the repository as fftlog.py).
+        Logic for computing the Power Spectrum and its Fast Fourier Transform 
+        for the different multipoles. We use the Python extension of 
+        [CAMB](https://github.com/cmbant/CAMB)
+        and this version of the [FFTLOG](https://github.com/JCGoran/fftlog-python) 
+        algorithm (also included in the repository as fftlog.py).
 
     compute_derivatives.py
-        Script for computing the all the derivatives with respect to the parameters involved in the analysis. It stores the results as a dictionary in 'Results/derivatives.pkl'.
+        Script for computing the all the derivatives with respect to the 
+        parameters involved in the analysis. 
+        It stores the results as a dictionary in 'Results/derivatives.pkl'.
 
     config_file.ipynb
-        Notebook for easy manipulation of the input parameters for the compute_derivatives.py module. The parameters are stored in 'Data/config_derivatives.pkl'. 
+        Notebook for easy manipulation of the input parameters for the 
+        compute_derivatives.py module. 
+        The parameters are stored in 'Data/config_derivatives.pkl'. 
 
     cosmofuncs.py
         Set of utils to compute cosmological quantities.
 
     fishermat.py
-        Set of utils to load the covariance matrices and compute the inverse and fisher matrices. It also contains an additional util to study the SNR.
+        Set of utils to load the covariance matrices and compute 
+        the inverse and fisher matrices. 
+        It also contains an additional util to study the SNR.
 
     multipole_signal.py
-        Module for computing the multipoles signals and their derivatives with respect to the parameters involved in the analysis. The derivatives with respect to the cosmic parameters are
-        computed numerically. The rest of the derivatives can be computed analytically.
+        Module for computing the multipoles signals and their derivatives 
+        with respect to the parameters involved in the analysis. 
+        The derivatives with respect to the cosmic parameters are
+        computed numerically. 
+        The rest of the derivatives can be computed analytically.
     ```
 
 # Citation
