@@ -20,7 +20,7 @@ from cosmofuncs import CosmoFuncs
 
 class Signal(object):
     """
-    Class representing the signal calculation for multiple populations.
+    Class for the calculation of real-space multipole signals of multiple populations.
     
     Parameters:
     - solver: Solver object
